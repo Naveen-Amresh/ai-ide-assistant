@@ -48,6 +48,33 @@ Spring's ratio is relative to litestar + msgspec.
 - **Tuning effect:** `--task-impl rust` and 2 workers were worth about 5–10% for Python. Virtual threads
   were worth up to 3.6× for Spring compared with platform threads.
 
+## Python 3.15 GIL build vs 3.15t, JIT and orjson
+
+Separate run at 64 users, 3 × 10 s rounds, with every stack re-measured in the same run:
+[`results/gil-vs-ft/RESULTS.md`](results/gil-vs-ft/RESULTS.md). The GIL build uses granian with
+4 *process* workers (`--runtime-mode mt --runtime-threads 2 --task-impl asyncio`), the winner of
+[`results/granian_tuning_gil.json`](results/granian_tuning_gil.json). Total pool stays at 32.
+
+| Endpoint (req/s) | 3.15t litestar | 3.15t fastapi+msgspec | GIL litestar | GIL fastapi+msgspec | GIL fastapi+orjson | GIL fastapi+pydantic | spring boot |
+|---|---|---|---|---|---|---|---|
+| GET /json | 18,411 | 14,258 | **23,187** | 16,400 | 18,234 | 16,835 | 43,825 |
+| GET /db | **7,392** | 6,521 | 7,114 | 6,515 | 6,362 | 6,385 | 15,236 |
+| GET /queries?n=20 | 906 | **1,178** | 1,000 | 906 | 895 | 984 | 1,000 |
+| GET /items?limit=100 | 2,113 | 2,463 | **2,739** | 2,465 | 2,737 | 1,797 | 3,730 |
+| POST /items | 4,522 | 4,680 | 4,810 | **4,812** | 4,481 | 4,007 | 9,860 |
+
+- **The GIL build is the faster Python.** Litestar gains +26% on `/json` and +30% on 100-row lists over
+  3.15t. DB-bound endpoints are within noise. Free-threading brings no benefit for HTTP serving, because
+  granian's process workers already use every core.
+- **orjson makes FastAPI's raw JSON path as fast as msgspec** (it ties GIL Litestar on 100 rows).
+  pydantic remains the slowest FastAPI option for large responses.
+- **The experimental JIT (`PYTHON_JIT=1`) is not usable here:** granian workers **segfaulted twice**
+  (jump to address 0) during Litestar `POST /items`, which took the server down
+  ([`jit_segfaults.txt`](results/gil-vs-ft/jit_segfaults.txt)). On the endpoints that completed it was
+  within ±3% of JIT-off ([`jit_partial.log`](results/gil-vs-ft/jit_partial.log)).
+- **Spring Boot still leads** by 1.4–2.1× over the best Python result on `/json`, `/db`, `/items` and
+  `POST`. `/queries?n=20` is a tie (PostgreSQL-bound); Spring scored 810 to 1,000 across the two runs.
+
 ## Free-threading gotcha
 
 On 3.15t, granian runs `--workers N` as **threads in one process**, each with its own event loop.

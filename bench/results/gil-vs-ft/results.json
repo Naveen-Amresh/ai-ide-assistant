@@ -12,7 +12,9 @@
       "litestar + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log",
       "fastapi + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log",
       "[gil] litestar + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 4 --runtime-mode mt --runtime-threads 2 --task-impl asyncio --log-level warning --no-access-log",
-      "[gil] fastapi + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 4 --runtime-mode mt --runtime-threads 2 --task-impl asyncio --log-level warning --no-access-log"
+      "[gil] fastapi + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 4 --runtime-mode mt --runtime-threads 2 --task-impl asyncio --log-level warning --no-access-log",
+      "[gil] fastapi + orjson": "--interface asgi --loop uvloop --http 1 --no-ws --workers 4 --runtime-mode mt --runtime-threads 2 --task-impl asyncio --log-level warning --no-access-log",
+      "[gil] fastapi + pydantic v2": "--interface asgi --loop uvloop --http 1 --no-ws --workers 4 --runtime-mode mt --runtime-threads 2 --task-impl asyncio --log-level warning --no-access-log"
     },
     "packages": {
       "litestar": "2.24.0",
@@ -337,6 +339,222 @@
             4879
           ],
           "db_tps": 4812.421451459838
+        }
+      }
+    },
+    "[gil] fastapi + orjson": {
+      "GET /json": {
+        "64": {
+          "rps": 18234.0246385095,
+          "p50_ms": 3.1034040000000003,
+          "p99_ms": 9.204537,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            19463,
+            18234,
+            16777
+          ],
+          "db_tps": 0.0
+        }
+      },
+      "GET /db (1 query)": {
+        "64": {
+          "rps": 6362.440506138991,
+          "p50_ms": 9.038451,
+          "p99_ms": 27.060737000000003,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            6576,
+            6262,
+            6362
+          ],
+          "db_tps": 6362.440506138991
+        }
+      },
+      "GET /queries?n=20": {
+        "64": {
+          "rps": 895.0348160415848,
+          "p50_ms": 66.50372999999999,
+          "p99_ms": 154.586527,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            1031,
+            895,
+            889
+          ],
+          "db_tps": 17900.696320831696
+        }
+      },
+      "GET /items?limit=100": {
+        "64": {
+          "rps": 2737.0562230359615,
+          "p50_ms": 21.196906000000002,
+          "p99_ms": 60.674297,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            2580,
+            2737,
+            2764
+          ],
+          "db_tps": 2737.0562230359615
+        }
+      },
+      "POST /items": {
+        "64": {
+          "rps": 4481.034382814769,
+          "p50_ms": 13.41929,
+          "p99_ms": 30.791494,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            4354,
+            4572,
+            4481
+          ],
+          "db_tps": 4481.034382814769
+        }
+      }
+    },
+    "[gil] fastapi + pydantic v2": {
+      "GET /json": {
+        "64": {
+          "rps": 16834.706375072736,
+          "p50_ms": 3.447526,
+          "p99_ms": 9.335441999999999,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            16835,
+            16626,
+            17790
+          ],
+          "db_tps": 0.0
+        }
+      },
+      "GET /db (1 query)": {
+        "64": {
+          "rps": 6384.512339867125,
+          "p50_ms": 9.446325,
+          "p99_ms": 24.077274,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            6385,
+            6179,
+            6519
+          ],
+          "db_tps": 6384.512339867125
+        }
+      },
+      "GET /queries?n=20": {
+        "64": {
+          "rps": 984.0529697839938,
+          "p50_ms": 61.048514,
+          "p99_ms": 147.2418,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            1035,
+            984,
+            955
+          ],
+          "db_tps": 19681.059395679877
+        }
+      },
+      "GET /items?limit=100": {
+        "64": {
+          "rps": 1797.4578464723966,
+          "p50_ms": 31.816028000000003,
+          "p99_ms": 104.042621,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            1862,
+            1758,
+            1797
+          ],
+          "db_tps": 1797.4578464723966
+        }
+      },
+      "POST /items": {
+        "64": {
+          "rps": 4006.932393123521,
+          "p50_ms": 14.721183,
+          "p99_ms": 34.795828,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            4007,
+            4224,
+            3807
+          ],
+          "db_tps": 4006.932393123521
+        }
+      }
+    },
+    "spring boot + hikaricp": {
+      "GET /json": {
+        "64": {
+          "rps": 43824.570134686655,
+          "p50_ms": 1.286199,
+          "p99_ms": 4.676133,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            42093,
+            43890,
+            43825
+          ],
+          "db_tps": 0.0
+        }
+      },
+      "GET /db (1 query)": {
+        "64": {
+          "rps": 15235.935166364508,
+          "p50_ms": 3.7636570000000003,
+          "p99_ms": 11.505517999999999,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            17051,
+            15078,
+            15236
+          ],
+          "db_tps": 15235.935166364508
+        }
+      },
+      "GET /queries?n=20": {
+        "64": {
+          "rps": 1000.3883183152739,
+          "p50_ms": 59.610892,
+          "p99_ms": 115.171419,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            924,
+            1000,
+            1017
+          ],
+          "db_tps": 20007.766366305477
+        }
+      },
+      "GET /items?limit=100": {
+        "64": {
+          "rps": 3730.3203815012735,
+          "p50_ms": 15.384246000000001,
+          "p99_ms": 44.18999,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            3631,
+            4190,
+            3730
+          ],
+          "db_tps": 3730.3203815012735
+        }
+      },
+      "POST /items": {
+        "64": {
+          "rps": 9860.49791986662,
+          "p50_ms": 5.380358,
+          "p99_ms": 22.195837,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            8984,
+            9860,
+            10858
+          ],
+          "db_tps": 9860.49791986662
         }
       }
     }
