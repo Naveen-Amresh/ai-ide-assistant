@@ -1,0 +1,18 @@
+[project]
+name = "litestar-vs-fastapi-bench"
+version = "0.1.0"
+description = "Litestar+msgspec vs FastAPI (pydantic v2 / json / ujson) on granian+uvloop, Python 3.15t, asyncpg"
+requires-python = ">=3.15"
+dependencies = [
+    "litestar==2.24.0",
+    "msgspec==0.22.0",
+    "fastapi==0.143.0",
+    "starlette==1.7.0",
+    "pydantic==2.14.0",
+    "pydantic-core==2.50.0",
+    "ujson==6.0.0",
+    "granian==2.8.4",
+    "uvloop==0.23.0",
+    "asyncpg==0.32.0",
+]
+# orjson is intentionally absent: 3.13.0 refuses to build on free-threaded CPython.
