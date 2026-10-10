@@ -9,7 +9,8 @@
     "oha": "oha 1.16.0",
     "granian_flags": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log",
     "granian_flags_per_app": {
-      "litestar + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log"
+      "litestar + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log",
+      "fastapi + msgspec": "--interface asgi --loop uvloop --http 1 --no-ws --workers 2 --runtime-mode mt --runtime-threads 2 --task-impl rust --log-level warning --no-access-log"
     },
     "packages": {
       "litestar": "2.24.0",
@@ -118,6 +119,78 @@
             4544
           ],
           "db_tps": 4522.219883162352
+        }
+      }
+    },
+    "fastapi + msgspec": {
+      "GET /json": {
+        "64": {
+          "rps": 14257.744235501168,
+          "p50_ms": 4.075283,
+          "p99_ms": 12.830544,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            14258,
+            15553,
+            13699
+          ],
+          "db_tps": 0.0
+        }
+      },
+      "GET /db (1 query)": {
+        "64": {
+          "rps": 6520.709474472979,
+          "p50_ms": 9.045147,
+          "p99_ms": 23.898036,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            6521,
+            6573,
+            5911
+          ],
+          "db_tps": 6520.709474472979
+        }
+      },
+      "GET /queries?n=20": {
+        "64": {
+          "rps": 1177.855750455526,
+          "p50_ms": 50.856876,
+          "p99_ms": 112.39299899999999,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            1178,
+            1234,
+            1126
+          ],
+          "db_tps": 23557.115009110523
+        }
+      },
+      "GET /items?limit=100": {
+        "64": {
+          "rps": 2463.0518741954706,
+          "p50_ms": 23.427268,
+          "p99_ms": 63.18504899999999,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            2433,
+            2463,
+            2619
+          ],
+          "db_tps": 2463.0518741954706
+        }
+      },
+      "POST /items": {
+        "64": {
+          "rps": 4680.239363152464,
+          "p50_ms": 12.364999,
+          "p99_ms": 29.921016,
+          "ok_ratio": 1.0,
+          "rps_runs": [
+            4680,
+            4727,
+            4592
+          ],
+          "db_tps": 4680.239363152464
         }
       }
     }
