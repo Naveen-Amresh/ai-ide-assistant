@@ -25,14 +25,29 @@ OHA = os.environ.get("OHA", str(Path.home() / ".cargo/bin/oha"))
 JAVA = os.environ.get("JAVA", "/usr/lib/jvm/java-25-openjdk-amd64/bin/java")
 SPRING_JAR = ROOT / "spring" / "target" / "spring-bench.jar"
 
+FT_VENV = ROOT / ".venv"        # Python 3.15t (free-threaded, GIL off)
+GIL_VENV = ROOT / ".venv-gil"   # Python 3.15 default build (GIL on, JIT available)
+
+# Best granian flags per build (tune_granian.py): threads on 3.15t, processes on the GIL build.
+FT_GRANIAN = {}
+GIL_GRANIAN = {"workers": 4, "runtime_mode": "mt", "runtime_threads": 2, "task_impl": "asyncio"}
+
+# name -> (granian target or "java", virtualenv, extra env, granian flag overrides)
 APPS = {
-    "litestar + msgspec": "apps.litestar_msgspec:app",
-    "fastapi + msgspec": "apps.fastapi_msgspec:app",
-    "fastapi + pydantic v2": "apps.fastapi_pydantic:app",
-    "fastapi + stdlib json": "apps.fastapi_json:app",
-    "fastapi + ujson": "apps.fastapi_ujson:app",
-    "spring boot + hikaricp": "java",
+    "litestar + msgspec": ("apps.litestar_msgspec:app", FT_VENV, {}, FT_GRANIAN),
+    "fastapi + msgspec": ("apps.fastapi_msgspec:app", FT_VENV, {}, FT_GRANIAN),
+    "fastapi + pydantic v2": ("apps.fastapi_pydantic:app", FT_VENV, {}, FT_GRANIAN),
+    "fastapi + stdlib json": ("apps.fastapi_json:app", FT_VENV, {}, FT_GRANIAN),
+    "fastapi + ujson": ("apps.fastapi_ujson:app", FT_VENV, {}, FT_GRANIAN),
+    "spring boot + hikaricp": ("java", None, {}, {}),
 }
+for _jit in (False, True):
+    _tag = "gil+jit" if _jit else "gil"
+    for _label, _target in [("litestar + msgspec", "apps.litestar_msgspec:app"),
+                            ("fastapi + msgspec", "apps.fastapi_msgspec:app"),
+                            ("fastapi + pydantic v2", "apps.fastapi_pydantic:app"),
+                            ("fastapi + orjson", "apps.fastapi_orjson:app")]:
+        APPS[f"[{_tag}] {_label}"] = (_target, GIL_VENV, {"PYTHON_JIT": "1" if _jit else "0"}, GIL_GRANIAN)
 
 POST_BODY = json.dumps({"name": "bench-item", "price": 19.99, "quantity": 3, "tags": ["a", "b", "c"]})
 ENDPOINTS = {
@@ -84,6 +99,15 @@ def oha(url_and_args: list[str], port: int, duration: int, conns: int, cpus: str
     }
 
 
+def venv_python_version(venv: Path) -> str | None:
+    py = venv / "bin" / "python"
+    if not py.exists():
+        return None
+    code = ("import sys, importlib.metadata as m; print(sys.version.split()[0], "
+            "'| orjson', m.version('orjson'))")
+    return subprocess.run([str(py), "-c", code], capture_output=True, text=True).stdout.strip()
+
+
 def granian_flags(args) -> list[str]:
     flags = ["--interface", "asgi", "--loop", "uvloop", "--http", "1", "--no-ws",
              "--workers", str(args.workers), "--runtime-mode", args.runtime_mode,
@@ -94,19 +118,23 @@ def granian_flags(args) -> list[str]:
     return flags
 
 
-def server_cmd(target: str, args) -> tuple[list[str], dict]:
-    env = dict(os.environ)
+def server_cmd(name: str, args) -> tuple[list[str], dict]:
+    target, venv, extra_env, overrides = APPS[name]
+    args = argparse.Namespace(**(vars(args) | overrides))
+    env = dict(os.environ) | extra_env
     if target == "java":
         env |= {"BENCH_PORT": str(args.port), "BENCH_POOL_SIZE": str(args.total_pool),
                 "BENCH_VIRTUAL_THREADS": str(args.java_virtual_threads).lower()}
         return [JAVA, *args.java_opts.split(), "-jar", str(SPRING_JAR)], env
     env["BENCH_POOL_SIZE"] = str(max(1, args.total_pool // args.workers))
-    return [GRANIAN, *granian_flags(args), "--port", str(args.port), target], env
+    granian = str(venv / "bin" / "granian")
+    return [granian, *granian_flags(args), "--port", str(args.port), target], env
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--apps", default=",".join(APPS), help="comma-separated names from APPS")
+    ap.add_argument("--apps", default=",".join(n for n in APPS if not n.startswith("[")),
+                    help="comma-separated names from APPS (';' also accepted as separator)")
     ap.add_argument("--duration", type=int, default=15)
     ap.add_argument("--warmup", type=int, default=5)
     ap.add_argument("--java-warmup", type=int, default=30, help="JIT needs longer warmup")
@@ -132,10 +160,10 @@ def main() -> None:
 
     pin_postgres(args.pg_cpus)
     results: dict[str, dict[str, dict[str, dict]]] = {}
-    for name in args.apps.split(","):
-        target = APPS[name]
+    for name in [n.strip() for n in args.apps.replace(";", ",").split(",") if n.strip()]:
+        target = APPS[name][0]
         subprocess.run([PY, str(ROOT / "seed.py")], check=True, cwd=ROOT, capture_output=True)
-        cmd, env = server_cmd(target, args)
+        cmd, env = server_cmd(name, args)
         proc = subprocess.Popen(["taskset", "-c", args.server_cpus, *cmd], cwd=ROOT, env=env,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                 start_new_session=True)
@@ -177,9 +205,13 @@ def main() -> None:
         "cpus": os.cpu_count(),
         "oha": subprocess.run([OHA, "--version"], capture_output=True, text=True).stdout.strip(),
         "granian_flags": " ".join(granian_flags(args)),
+        "granian_flags_per_app": {
+            n: " ".join(granian_flags(argparse.Namespace(**(vars(args) | APPS[n][3]))))
+            for n in results if APPS[n][0] != "java"},
         "packages": {p: version(p) for p in [
             "litestar", "msgspec", "fastapi", "starlette", "pydantic", "pydantic-core",
             "ujson", "granian", "uvloop", "asyncpg"]},
+        "python_gil_build": venv_python_version(GIL_VENV),
         "java_stack": "Spring Boot 4.1.1 (Spring 7.0.9, Tomcat 11.0.24, Jackson 3.1.5), "
                       "HikariCP 7.1.0, pgjdbc 42.7.14, Hibernate Validator 9.1.3",
         "settings": vars(args),

@@ -1,0 +1,156 @@
+[
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 1,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 11818,
+    "GET /db (1 query)": 4306,
+    "GET /items?limit=100": 1347
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 1,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 11129,
+    "GET /db (1 query)": 4269,
+    "GET /items?limit=100": 1393
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 1,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 14174,
+    "GET /db (1 query)": 4351,
+    "GET /items?limit=100": 1322
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 1,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 12053,
+    "GET /db (1 query)": 4106,
+    "GET /items?limit=100": 1280
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 17689,
+    "GET /db (1 query)": 6267,
+    "GET /items?limit=100": 2258
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 20783,
+    "GET /db (1 query)": 6271,
+    "GET /items?limit=100": 2457
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 21483,
+    "GET /db (1 query)": 5765,
+    "GET /items?limit=100": 2149
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 20484,
+    "GET /db (1 query)": 6394,
+    "GET /items?limit=100": 2632
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 4,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 24468,
+    "GET /db (1 query)": 7007,
+    "GET /items?limit=100": 2490
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 4,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 22701,
+    "GET /db (1 query)": 5983,
+    "GET /items?limit=100": 2468
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 4,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "asyncio",
+    "backpressure": null,
+    "GET /json": 21587,
+    "GET /db (1 query)": 7671,
+    "GET /items?limit=100": 3029
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 4,
+    "mode": "mt",
+    "rt_threads": 2,
+    "task_impl": "rust",
+    "backpressure": null,
+    "GET /json": 23519,
+    "GET /db (1 query)": 6393,
+    "GET /items?limit=100": 2449
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "rust",
+    "backpressure": 64,
+    "GET /json": 19567,
+    "GET /db (1 query)": 7154,
+    "GET /items?limit=100": 2454
+  },
+  {
+    "app": "apps.litestar_msgspec:app",
+    "workers": 2,
+    "mode": "st",
+    "rt_threads": 1,
+    "task_impl": "rust",
+    "backpressure": 256,
+    "GET /json": 20051,
+    "GET /db (1 query)": 7609,
+    "GET /items?limit=100": 2358
+  }
+]

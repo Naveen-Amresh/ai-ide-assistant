@@ -62,7 +62,7 @@ async def create_item(data: ItemIn) -> Item:
 @asynccontextmanager
 async def lifespan(_: Litestar):
     await open_pool()
-    print(f"[litestar-msgspec] GIL enabled: {sys._is_gil_enabled()}", flush=True)
+    print(f"[litestar-msgspec] GIL enabled: {sys._is_gil_enabled()}, JIT enabled: {sys._jit.is_enabled()}", flush=True)
     yield
     await close_pool()
 

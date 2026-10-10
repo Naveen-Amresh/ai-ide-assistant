@@ -34,7 +34,7 @@ def make_lifespan(label: str):
     @asynccontextmanager
     async def lifespan(_):
         await open_pool()
-        print(f"[{label}] GIL enabled: {sys._is_gil_enabled()}", flush=True)
+        print(f"[{label}] GIL enabled: {sys._is_gil_enabled()}, JIT enabled: {sys._jit.is_enabled()}", flush=True)
         yield
         await close_pool()
 
