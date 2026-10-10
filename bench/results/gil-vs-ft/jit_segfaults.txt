@@ -1,0 +1,2 @@
+[ 7388.279413] python[12699]: segfault at 0 ip 0000000000000000 sp 00007fff379ac688 error 14 likely on CPU 1 (core 1, socket 0)
+[ 8179.113353] python[14475]: segfault at 0 ip 0000000000000000 sp 00007ffebab4fdb8 error 14 likely on CPU 1 (core 1, socket 0)

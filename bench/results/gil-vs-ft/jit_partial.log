@@ -1,0 +1,4 @@
+[gil+jit] litestar + msgspec GET /json              c=64       23617 req/s  p50    2.39  p99    7.06 ms  ok 1.000
+[gil+jit] litestar + msgspec GET /db (1 query)      c=64        6889 req/s  p50    8.38  p99   24.55 ms  ok 1.000
+[gil+jit] litestar + msgspec GET /queries?n=20      c=64        1026 req/s  p50   57.94  p99  128.91 ms  ok 1.000
+[gil+jit] litestar + msgspec GET /items?limit=100   c=64        2558 req/s  p50   22.65  p99   65.93 ms  ok 1.000
