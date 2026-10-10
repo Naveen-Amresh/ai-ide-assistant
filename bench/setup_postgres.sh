@@ -2,6 +2,7 @@
 # Fetch official PostgreSQL 18.4 binaries (via the embedded-postgres npm package, since
 # apt.postgresql.org may be unreachable) and start a throwaway benchmark cluster.
 set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
 PG_VER="${PG_VER:-18.4.0-beta.17}"
 PREFIX="${PREFIX:-/opt/pg18}"
 DATA="${DATA:-/opt/pgdata/18}"
@@ -25,7 +26,6 @@ BIN="$PREFIX/package/native/bin"
 id "$RUN_AS" >/dev/null 2>&1 || useradd -m "$RUN_AS"
 mkdir -p "$(dirname "$DATA")" && chown "$RUN_AS" "$(dirname "$DATA")"
 su "$RUN_AS" -c "$BIN/initdb -D $DATA -U postgres --auth=trust -E UTF8"
-su "$RUN_AS" -c "$BIN/pg_ctl -D $DATA -l $(dirname "$DATA")/log \
-  -o '-p 5432 -c max_connections=300 -c shared_buffers=512MB -c synchronous_commit=off' start"
+BIN="$BIN" DATA="$DATA" RUN_AS="$RUN_AS" "$HERE/start_postgres.sh"
 sleep 2
 "$BIN/psql" -h 127.0.0.1 -U postgres -c "CREATE DATABASE bench"
