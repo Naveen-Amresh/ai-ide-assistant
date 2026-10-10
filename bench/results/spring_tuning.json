@@ -1,0 +1,42 @@
+[
+  {
+    "config": "parallel+coh vt",
+    "opts": "-XX:+UseParallelGC -XX:+UseCompactObjectHeaders -Xms1g -Xmx1g -XX:+AlwaysPreTouch",
+    "virtual_threads": true,
+    "GET /json": 35610,
+    "GET /db (1 query)": 12809,
+    "GET /items?limit=100": 3580
+  },
+  {
+    "config": "parallel+coh platform",
+    "opts": "-XX:+UseParallelGC -XX:+UseCompactObjectHeaders -Xms1g -Xmx1g -XX:+AlwaysPreTouch",
+    "virtual_threads": false,
+    "GET /json": 10231,
+    "GET /db (1 query)": 7795,
+    "GET /items?limit=100": 2087
+  },
+  {
+    "config": "parallel vt",
+    "opts": "-XX:+UseParallelGC -Xms1g -Xmx1g -XX:+AlwaysPreTouch",
+    "virtual_threads": true,
+    "GET /json": 37616,
+    "GET /db (1 query)": 14045,
+    "GET /items?limit=100": 3525
+  },
+  {
+    "config": "g1+coh vt",
+    "opts": "-XX:+UseG1GC -XX:+UseCompactObjectHeaders -Xms1g -Xmx1g -XX:+AlwaysPreTouch",
+    "virtual_threads": true,
+    "GET /json": 37215,
+    "GET /db (1 query)": 13342,
+    "GET /items?limit=100": 3574
+  },
+  {
+    "config": "zgc+coh vt",
+    "opts": "-XX:+UseZGC -XX:+UseCompactObjectHeaders -Xms1g -Xmx1g -XX:+AlwaysPreTouch",
+    "virtual_threads": true,
+    "GET /json": 36906,
+    "GET /db (1 query)": 15367,
+    "GET /items?limit=100": 3275
+  }
+]
