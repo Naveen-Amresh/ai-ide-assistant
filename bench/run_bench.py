@@ -88,6 +88,8 @@ def oha(url_and_args: list[str], port: int, duration: int, conns: int, cpus: str
            "-c", str(conns), "--no-tui", "--output-format", "json", *extra]
     out = json.loads(subprocess.run(cmd, capture_output=True, text=True, check=True).stdout)
     s, lat = out["summary"], out["latencyPercentiles"]
+    if lat.get("p50") is None:  # no request completed (e.g. the VM stalled)
+        raise RuntimeError(f"no successful responses for {path}: {out.get('errorDistribution')}")
     codes = out.get("statusCodeDistribution", {})
     ok = sum(v for k, v in codes.items() if k.startswith("2"))
     total = sum(codes.values()) or 1
@@ -97,6 +99,16 @@ def oha(url_and_args: list[str], port: int, duration: int, conns: int, cpus: str
         "p99_ms": lat["p99"] * 1000,
         "ok_ratio": ok / total,
     }
+
+
+def measure(spec: list[str], port: int, duration: int, conns: int, cpus: str) -> dict:
+    """One measured round; a round with no completed requests is retried once."""
+    try:
+        return oha(spec, port, duration, conns, cpus)
+    except RuntimeError as exc:
+        print(f"  retrying round: {exc}", flush=True)
+        time.sleep(5)
+        return oha(spec, port, duration, conns, cpus)
 
 
 def venv_python_version(venv: Path) -> str | None:
@@ -155,12 +167,27 @@ def main() -> None:
     ap.add_argument("--load-cpus", default="3")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--out", default=str(ROOT / "results"))
+    ap.add_argument("--resume", action="store_true",
+                    help="keep stacks already complete in <out>/results.json and skip them")
     args = ap.parse_args()
     levels = [int(c) for c in args.connections.split(",")]
 
-    pin_postgres(args.pg_cpus)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict[str, dict[str, dict]]] = {}
-    for name in [n.strip() for n in args.apps.replace(";", ",").split(",") if n.strip()]:
+    if args.resume and (out / "results.json").exists():
+        results = json.loads((out / "results.json").read_text())["results"]
+    names = [n.strip() for n in args.apps.replace(";", ",").split(",") if n.strip()]
+    if args.resume:
+        results = {n: r for n, r in results.items()
+                   if n in names and len(r) == len(ENDPOINTS)
+                   and all(str(c) in r[ep] for ep in ENDPOINTS for c in levels)}
+
+    pin_postgres(args.pg_cpus)
+    for name in names:
+        if name in results:
+            print(f"{name}: already complete, skipping", flush=True)
+            continue
         target = APPS[name][0]
         subprocess.run([PY, str(ROOT / "seed.py")], check=True, cwd=ROOT, capture_output=True)
         cmd, env = server_cmd(name, args)
@@ -175,7 +202,7 @@ def main() -> None:
                 results[name][ep] = {}
                 for conns in levels:
                     oha(spec, args.port, warmup, conns, args.load_cpus)
-                    runs = [oha(spec, args.port, args.duration, conns, args.load_cpus)
+                    runs = [measure(spec, args.port, args.duration, conns, args.load_cpus)
                             for _ in range(args.rounds)]
                     best = {k: statistics.median(r[k] for r in runs) for k in runs[0]}
                     best["rps_runs"] = [round(r["rps"]) for r in runs]
@@ -184,6 +211,7 @@ def main() -> None:
                     print(f"{name:24} {ep:22} c={conns:<4} {best['rps']:>9.0f} req/s"
                           f"  p50 {best['p50_ms']:7.2f}  p99 {best['p99_ms']:7.2f} ms"
                           f"  ok {best['ok_ratio']:.3f}", flush=True)
+            save(out, results, names, args)
         finally:
             os.killpg(proc.pid, signal.SIGINT if target != "java" else signal.SIGTERM)
             try:
@@ -191,6 +219,12 @@ def main() -> None:
             except subprocess.TimeoutExpired:
                 os.killpg(proc.pid, signal.SIGKILL)
 
+    save(out, results, names, args)
+    print(f"wrote {out / 'results.json'}")
+
+
+def save(out: Path, results: dict, names: list[str], args) -> None:
+    results = {n: results[n] for n in names if n in results}
     pg_version = subprocess.run(
         ["psql", "-h", "127.0.0.1", "-U", "postgres", "-tAc", "SHOW server_version"],
         capture_output=True, text=True).stdout.strip()
@@ -216,10 +250,7 @@ def main() -> None:
                       "HikariCP 7.1.0, pgjdbc 42.7.14, Hibernate Validator 9.1.3",
         "settings": vars(args),
     }
-    out = Path(args.out)
-    out.mkdir(exist_ok=True)
     (out / "results.json").write_text(json.dumps({"meta": meta, "results": results}, indent=2))
-    print(f"wrote {out / 'results.json'}")
 
 
 if __name__ == "__main__":
