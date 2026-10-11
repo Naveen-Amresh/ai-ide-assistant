@@ -33,11 +33,12 @@ for ep in endpoints:
             lines.append(f"| {a} | {conns} | {r['p50_ms']:.2f} | {r['p99_ms']:.2f} | {rps} | {tps} |")
     lines.append("")
 
-lines += ["## Summary: req/s relative to litestar + msgspec", "",
+baseline = next((a for a in ("litestar + msgspec", "[gil] litestar + msgspec") if a in results), apps[0])
+lines += [f"## Summary: req/s relative to {baseline}", "",
           "| Endpoint | Users | " + " | ".join(apps) + " |", "|---" * (len(apps) + 2) + "|"]
 for ep in endpoints:
     for conns in levels:
-        base = results.get("litestar + msgspec", results.get("[gil] litestar + msgspec"))[ep][conns]["rps"]
+        base = results[baseline][ep][conns]["rps"]
         cells = [f"{results[a][ep][conns]['rps'] / base:.2f}x" for a in apps]
         lines.append(f"| {ep} | {conns} | " + " | ".join(cells) + " |")
 

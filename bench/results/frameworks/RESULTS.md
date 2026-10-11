@@ -57,7 +57,7 @@ Users = concurrent keep-alive connections. Req/s = HTTP throughput. DB TPS = dat
 | [3.14] robyn + msgspec | 64 | 7.61 | 25.32 | 7,333 | 7,333 |
 | spring boot + hikaricp | 64 | 4.56 | 17.56 | **11,882** | 11,882 |
 
-## Summary: req/s relative to litestar + msgspec
+## Summary: req/s relative to [gil] litestar + msgspec
 
 | Endpoint | Users | [gil] litestar + msgspec | [gil] blacksheep + msgspec | [gil] emmett55 + msgspec (rsgi) | [gil] socketify + msgspec | [3.14] robyn + msgspec | spring boot + hikaricp |
 |---|---|---|---|---|---|---|---|

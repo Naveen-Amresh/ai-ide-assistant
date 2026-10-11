@@ -62,7 +62,7 @@ Users = concurrent keep-alive connections. Req/s = HTTP throughput. DB TPS = dat
 | [gil] fastapi + pydantic v2 | 64 | 14.72 | 34.80 | 4,007 | 4,007 |
 | spring boot + hikaricp | 64 | 5.38 | 22.20 | **9,860** | 9,860 |
 
-## Summary: req/s relative to the fastest Python stack (litestar + msgspec)
+## Summary: req/s relative to litestar + msgspec
 
 | Endpoint | Users | litestar + msgspec | fastapi + msgspec | [gil] litestar + msgspec | [gil] fastapi + msgspec | [gil] fastapi + orjson | [gil] fastapi + pydantic v2 | spring boot + hikaricp |
 |---|---|---|---|---|---|---|---|---|
