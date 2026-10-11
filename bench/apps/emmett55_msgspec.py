@@ -3,7 +3,8 @@
 from emmett55 import App, request, response
 
 from apps._msgspec_io import HELLO, DecodeError, ValidationError, decode_item, encode
-from common import SQL_INSERT, SQL_MANY, SQL_ONE, clamp, lazy_pool, random_id
+from common import (EXPORT_MAX, SQL_AGG_MANY, SQL_AGG_ONE, SQL_INSERT, SQL_MANY, SQL_ONE, clamp,
+                    lazy_pool, random_id)
 
 app = App(__name__)
 
@@ -58,3 +59,42 @@ async def create_item():
         row = await conn.fetchrow(SQL_INSERT, data.name, data.price, data.quantity, data.tags)
     response.status = 201
     return encode(dict(row))
+
+
+@app.route("/export", methods=["get"], output="bytes")
+async def export_rows():
+    _json()
+    rows = clamp(int_param("rows", EXPORT_MAX), hi=EXPORT_MAX)
+    async with (await lazy_pool()).acquire() as conn:
+        return encode([dict(r) for r in await conn.fetch(SQL_MANY, rows)])
+
+
+# --- json_agg variants: PostgreSQL renders the JSON, Python forwards the text ---
+
+@app.route("/agg/json", methods=["get"], output="bytes")
+async def agg_json_endpoint():
+    _json()
+    return HELLO
+
+
+@app.route("/agg/db", methods=["get"], output="bytes")
+async def agg_single_query():
+    _json()
+    async with (await lazy_pool()).acquire() as conn:
+        return (await conn.fetchval(SQL_AGG_ONE, random_id())).encode()
+
+
+@app.route("/agg/items", methods=["get"], output="bytes")
+async def agg_list_items():
+    _json()
+    limit = clamp(int_param("limit", 100))
+    async with (await lazy_pool()).acquire() as conn:
+        return (await conn.fetchval(SQL_AGG_MANY, limit)).encode()
+
+
+@app.route("/agg/export", methods=["get"], output="bytes")
+async def agg_export_rows():
+    _json()
+    rows = clamp(int_param("rows", EXPORT_MAX), hi=EXPORT_MAX)
+    async with (await lazy_pool()).acquire() as conn:
+        return (await conn.fetchval(SQL_AGG_MANY, rows)).encode()

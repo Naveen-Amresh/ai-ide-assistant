@@ -17,6 +17,11 @@ SQL_INSERT = (
     "RETURNING id, name, price, quantity, tags, created_at"
 )
 
+# PostgreSQL builds the JSON; the app just forwards one text value.
+SQL_AGG_ONE = f"SELECT row_to_json(t)::text FROM ({SQL_ONE}) t"
+SQL_AGG_MANY = f"SELECT coalesce(json_agg(t), '[]')::text FROM ({SQL_MANY}) t"
+EXPORT_MAX = 10_000
+
 
 def random_id() -> int:
     return random.randint(1, ROWS)

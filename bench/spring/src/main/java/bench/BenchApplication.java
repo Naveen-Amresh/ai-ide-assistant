@@ -19,6 +19,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -58,6 +59,9 @@ public class BenchApplication {
         static final String SQL_MANY = "SELECT " + COLS + " FROM items ORDER BY id LIMIT ?";
         static final String SQL_INSERT =
                 "INSERT INTO items (name, price, quantity, tags) VALUES (?, ?, ?, ?) RETURNING " + COLS;
+        static final String SQL_AGG_ONE = "SELECT row_to_json(t)::text FROM (" + SQL_ONE + ") t";
+        static final String SQL_AGG_MANY = "SELECT coalesce(json_agg(t), '[]')::text FROM (" + SQL_MANY + ") t";
+        static final int EXPORT_MAX = 10_000;
         static final Message HELLO = new Message("Hello, World!");
 
         static final RowMapper<Item> ROW = (rs, n) -> toItem(rs);
@@ -79,7 +83,11 @@ public class BenchApplication {
         }
 
         static int clamp(int n) {
-            return Math.max(1, Math.min(500, n));
+            return clamp(n, 500);
+        }
+
+        static int clamp(int n, int hi) {
+            return Math.max(1, Math.min(hi, n));
         }
 
         @GetMapping("/json")
@@ -114,6 +122,33 @@ public class BenchApplication {
         @GetMapping("/items")
         List<Item> items(@RequestParam(defaultValue = "100") int limit) {
             return jdbc.query(SQL_MANY, ROW, clamp(limit));
+        }
+
+        @GetMapping("/export")
+        List<Item> export(@RequestParam(defaultValue = "10000") int rows) {
+            return jdbc.query(SQL_MANY, ROW, clamp(rows, EXPORT_MAX));
+        }
+
+        // --- json_agg variants: PostgreSQL renders the JSON, Spring forwards the text ---
+
+        @GetMapping(value = "/agg/json", produces = MediaType.APPLICATION_JSON_VALUE)
+        Message aggJson() {
+            return HELLO;
+        }
+
+        @GetMapping(value = "/agg/db", produces = MediaType.APPLICATION_JSON_VALUE)
+        String aggDb() {
+            return jdbc.queryForObject(SQL_AGG_ONE, String.class, randomId());
+        }
+
+        @GetMapping(value = "/agg/items", produces = MediaType.APPLICATION_JSON_VALUE)
+        String aggItems(@RequestParam(defaultValue = "100") int limit) {
+            return jdbc.queryForObject(SQL_AGG_MANY, String.class, clamp(limit));
+        }
+
+        @GetMapping(value = "/agg/export", produces = MediaType.APPLICATION_JSON_VALUE)
+        String aggExport(@RequestParam(defaultValue = "10000") int rows) {
+            return jdbc.queryForObject(SQL_AGG_MANY, String.class, clamp(rows, EXPORT_MAX));
         }
 
         @PostMapping("/items")

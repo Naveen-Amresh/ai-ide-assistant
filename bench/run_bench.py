@@ -49,6 +49,14 @@ APPS |= {
     "[gil] socketify + msgspec": ("cmd:socketify", GIL_VENV, {}, {"workers": 2}),
     "[3.14] robyn + msgspec": ("cmd:robyn", ROBYN_VENV, {}, {"workers": 2}),
 }
+# Same logical endpoints served under a path prefix by an alternative implementation.
+APPS |= {
+    "[gil] emmett55 + json_agg (rsgi)": ("apps.emmett55_msgspec:app", GIL_VENV, {},
+                                          GIL_GRANIAN | {"interface": "rsgi", "path_prefix": "/agg"}),
+    "[gil] emmett55 + polars/adbc (rsgi)": ("apps.emmett55_polars:app", GIL_VENV, {},
+                                             GIL_GRANIAN | {"interface": "rsgi", "path_prefix": "/polars"}),
+    "spring boot + json_agg": ("java", None, {}, {"path_prefix": "/agg"}),
+}
 for _jit in (False, True):
     _tag = "gil+jit" if _jit else "gil"
     for _label, _target in [("litestar + msgspec", "apps.litestar_msgspec:app"),
@@ -64,10 +72,12 @@ ENDPOINTS = {
     "GET /queries?n=20": ["/queries?n=20"],
     "GET /items?limit=100": ["/items?limit=100"],
     "POST /items": ["/items", "-m", "POST", "-H", "content-type: application/json", "-d", POST_BODY],
+    "GET /export?rows=10000": ["/export?rows=10000"],
 }
 # DB statements per request, to turn req/s into DB transactions/s.
 QUERIES_PER_REQUEST = {"GET /json": 0, "GET /db (1 query)": 1, "GET /queries?n=20": 20,
-                       "GET /items?limit=100": 1, "POST /items": 1}
+                       "GET /items?limit=100": 1, "POST /items": 1, "GET /export?rows=10000": 1}
+DEFAULT_ENDPOINTS = [e for e in ENDPOINTS if e != "GET /export?rows=10000"]
 
 
 def pin_postgres(cpus: str) -> None:
@@ -184,10 +194,13 @@ def main() -> None:
     ap.add_argument("--load-cpus", default="3")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--out", default=str(ROOT / "results"))
+    ap.add_argument("--endpoints", default=",".join(DEFAULT_ENDPOINTS),
+                    help="';'-separated endpoint names from ENDPOINTS")
     ap.add_argument("--resume", action="store_true",
                     help="keep stacks already complete in <out>/results.json and skip them")
     args = ap.parse_args()
     levels = [int(c) for c in args.connections.split(",")]
+    endpoints = {e: ENDPOINTS[e] for e in args.endpoints.replace(";", ",").split(",") if e}
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -197,8 +210,7 @@ def main() -> None:
     names = [n.strip() for n in args.apps.replace(";", ",").split(",") if n.strip()]
     if args.resume:
         results = {n: r for n, r in results.items()
-                   if n in names and len(r) == len(ENDPOINTS)
-                   and all(str(c) in r[ep] for ep in ENDPOINTS for c in levels)}
+                   if n in names and all(ep in r and str(c) in r[ep] for ep in endpoints for c in levels)}
 
     pin_postgres(args.pg_cpus)
     for name in names:
@@ -215,7 +227,9 @@ def main() -> None:
         try:
             wait_ready(args.port)
             results[name] = {}
-            for ep, spec in ENDPOINTS.items():
+            prefix = APPS[name][3].get("path_prefix", "")
+            for ep, spec in endpoints.items():
+                spec = [prefix + spec[0], *spec[1:]]
                 results[name][ep] = {}
                 for conns in levels:
                     oha(spec, args.port, warmup, conns, args.load_cpus)
