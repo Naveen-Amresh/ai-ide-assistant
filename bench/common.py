@@ -44,3 +44,30 @@ async def close_pool() -> None:
 
 def get_pool():
     return _pools[asyncio.get_running_loop()]
+
+
+_pending: dict[asyncio.AbstractEventLoop, asyncio.Future] = {}
+
+
+async def lazy_pool():
+    """Pool for the running loop, created on first use.
+
+    For servers whose startup hooks don't run on the request loop (Emmett55/RSGI,
+    Socketify, Robyn). Concurrent first requests share one pool creation.
+    """
+    loop = asyncio.get_running_loop()
+    pool = _pools.get(loop)
+    if pool is not None:
+        return pool
+    fut = _pending.get(loop)
+    if fut is not None:
+        return await fut
+    fut = _pending[loop] = loop.create_future()
+    try:
+        pool = await open_pool()
+    except BaseException as exc:
+        del _pending[loop]
+        fut.set_exception(exc)
+        raise
+    fut.set_result(pool)
+    return pool

@@ -41,6 +41,14 @@ APPS = {
     "fastapi + ujson": ("apps.fastapi_ujson:app", FT_VENV, {}, FT_GRANIAN),
     "spring boot + hikaricp": ("java", None, {}, {}),
 }
+ROBYN_VENV = ROOT / ".venv-robyn"  # Python 3.14: robyn 0.88 ships no 3.15 wheel
+APPS |= {
+    "[gil] blacksheep + msgspec": ("apps.blacksheep_msgspec:app", GIL_VENV, {}, GIL_GRANIAN),
+    "[gil] emmett55 + msgspec (rsgi)": ("apps.emmett55_msgspec:app", GIL_VENV, {},
+                                        GIL_GRANIAN | {"interface": "rsgi"}),
+    "[gil] socketify + msgspec": ("cmd:socketify", GIL_VENV, {}, {"workers": 2}),
+    "[3.14] robyn + msgspec": ("cmd:robyn", ROBYN_VENV, {}, {"workers": 2}),
+}
 for _jit in (False, True):
     _tag = "gil+jit" if _jit else "gil"
     for _label, _target in [("litestar + msgspec", "apps.litestar_msgspec:app"),
@@ -121,7 +129,7 @@ def venv_python_version(venv: Path) -> str | None:
 
 
 def granian_flags(args) -> list[str]:
-    flags = ["--interface", "asgi", "--loop", "uvloop", "--http", "1", "--no-ws",
+    flags = ["--interface", getattr(args, "interface", "asgi"), "--loop", "uvloop", "--http", "1", "--no-ws",
              "--workers", str(args.workers), "--runtime-mode", args.runtime_mode,
              "--runtime-threads", str(args.runtime_threads), "--task-impl", args.task_impl,
              "--log-level", "warning", "--no-access-log"]
@@ -139,6 +147,15 @@ def server_cmd(name: str, args) -> tuple[list[str], dict]:
                 "BENCH_VIRTUAL_THREADS": str(args.java_virtual_threads).lower()}
         return [JAVA, *args.java_opts.split(), "-jar", str(SPRING_JAR)], env
     env["BENCH_POOL_SIZE"] = str(max(1, args.total_pool // args.workers))
+    py = str(venv / "bin" / "python")
+    if target == "cmd:socketify":
+        return [py, "-m", "socketify", "apps.socketify_msgspec:run", "--interface", "socketify",
+                "--port", str(args.port), "--workers", str(args.workers),
+                "--disable-listen-log", "true"], env
+    if target == "cmd:robyn":
+        env["BENCH_PORT"] = str(args.port)
+        return [py, "apps/robyn_msgspec.py", "--processes", str(args.workers), "--workers", "1",
+                "--log-level", "WARN"], env
     granian = str(venv / "bin" / "granian")
     return [granian, *granian_flags(args), "--port", str(args.port), target], env
 
@@ -213,7 +230,8 @@ def main() -> None:
                           f"  ok {best['ok_ratio']:.3f}", flush=True)
             save(out, results, names, args)
         finally:
-            os.killpg(proc.pid, signal.SIGINT if target != "java" else signal.SIGTERM)
+            os.killpg(proc.pid, signal.SIGTERM if target == "java" or target.startswith("cmd:")
+                      else signal.SIGINT)
             try:
                 proc.wait(15)
             except subprocess.TimeoutExpired:
@@ -241,7 +259,7 @@ def save(out: Path, results: dict, names: list[str], args) -> None:
         "granian_flags": " ".join(granian_flags(args)),
         "granian_flags_per_app": {
             n: " ".join(granian_flags(argparse.Namespace(**(vars(args) | APPS[n][3]))))
-            for n in results if APPS[n][0] != "java"},
+            for n in results if APPS[n][0] != "java" and not APPS[n][0].startswith("cmd:")},
         "packages": {p: version(p) for p in [
             "litestar", "msgspec", "fastapi", "starlette", "pydantic", "pydantic-core",
             "ujson", "granian", "uvloop", "asyncpg"]},

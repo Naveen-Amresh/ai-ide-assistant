@@ -75,6 +75,40 @@ Separate run at 64 users, 3 × 10 s rounds, with every stack re-measured in the 
 - **Spring Boot still leads** by 1.4–2.1× over the best Python result on `/json`, `/db`, `/items` and
   `POST`. `/queries?n=20` is a tie (PostgreSQL-bound); Spring scored 810 to 1,000 across the two runs.
 
+## Faster Python frameworks: BlackSheep, Emmett55, Socketify, Robyn
+
+Separate run at 64 users, 3 × 10 s rounds, all re-measured in the same run alongside GIL-build Litestar and
+Spring: [`results/frameworks/RESULTS.md`](results/frameworks/RESULTS.md). Every Python app uses msgspec and
+asyncpg with 32 PostgreSQL connections in total.
+
+| Stack | Server | Python |
+|---|---|---|
+| litestar + msgspec | granian ASGI, 4 processes | 3.15 (GIL) |
+| blacksheep + msgspec | granian ASGI, 4 processes | 3.15 (GIL) |
+| emmett55 + msgspec | granian **RSGI** (no ASGI layer), 4 processes | 3.15 (GIL) |
+| socketify + msgspec | socketify's own C++ uWebSockets server, 2 processes | 3.15 (GIL) |
+| robyn + msgspec | Robyn's Rust (actix) server, 2 processes | **3.14** (0.88.0 has no 3.15 wheel or sdist) |
+
+| Endpoint (req/s) | litestar | blacksheep | emmett55 | socketify | robyn | spring boot |
+|---|---|---|---|---|---|---|
+| GET /json | 25,113 | 52,820 | 50,694 | **98,522** | 36,809 | 51,502 |
+| GET /db | 8,144 | 10,017 | 10,580 | 10,598 | 9,932 | **17,756** |
+| GET /queries?n=20 | 1,190 | 1,135 | 1,125 | **1,331** | 1,009 | 912 |
+| GET /items?limit=100 | 3,037 | 3,862 | 4,123 | 3,824 | 3,608 | **5,077** |
+| POST /items | 5,472 | 7,840 | 9,122 | 8,668 | 7,333 | **11,882** |
+
+- **On `/json`, Socketify (1.9×), BlackSheep and Emmett55 match or beat Spring.** With no database
+  involved, a native HTTP core plus msgspec removes most per-request Python work. Socketify's figure is
+  probably capped by the single load-generator core.
+- **Spring still wins every database endpoint except `/queries`:** 1.7× on `/db`, 1.2× on `/items`,
+  1.3× on `POST` against the best Python framework. Row handling in asyncpg plus Python is the remaining gap.
+- **Emmett55 on RSGI is the best all-rounder** among the Python stacks, and 1.3–1.7× faster than Litestar.
+- **Fixes needed:** socketify 0.0.31 installs a task factory that breaks on Python 3.14+ (`eager_start`),
+  which is patched in `apps/socketify_msgspec.py`. Robyn needs its own venv on 3.14 because it pins
+  `uvloop~=0.22.1`.
+- The new apps return a pre-encoded `/json` body. Encoding a one-key dict costs well under 1 µs, which is
+  negligible at about 20 µs per request.
+
 ## Free-threading gotcha
 
 On 3.15t, granian runs `--workers N` as **threads in one process**, each with its own event loop.
